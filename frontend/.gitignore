@@ -1,0 +1,8 @@
+# Environment variables (Frontend)
+node_modules
+.env
+.env.local
+.angular
+
+# PNPM store
+.pnpm-store/

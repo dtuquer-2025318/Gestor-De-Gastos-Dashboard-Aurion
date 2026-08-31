@@ -1,0 +1,171 @@
+<div class="dashboard-layout" [class.sidebar-open]="sidebarOpen">
+
+  <!-- Sidebar -->
+  <aside class="dashboard-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hexGrad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#4f8ef7"/>
+              <stop offset="100%" stop-color="#5b4cdb"/>
+            </linearGradient>
+          </defs>
+          <path d="M12 2L20.66 7V17L12 22L3.34 17V7L12 2Z" fill="url(#hexGrad)" stroke="white" stroke-width="1.5"/>
+          <text x="12" y="16.5" text-anchor="middle" fill="white" font-size="11" font-weight="bold" font-family="sans-serif">A</text>
+        </svg>
+      </div>
+      <span class="brand-text">AURION</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active">
+        <i class="bi bi-house-door-fill"></i>
+        <span>INICIO</span>
+      </a>
+      <a class="nav-item">
+        <i class="bi bi-credit-card-fill"></i>
+        <span>Tarjetas De Crédito</span>
+      </a>
+      <a class="nav-item">
+        <i class="bi bi-people-fill"></i>
+        <span>Usuarios</span>
+      </a>
+      <a class="nav-item">
+        <i class="bi bi-piggy-bank-fill"></i>
+        <span>Ahorro para Emergencia</span>
+      </a>
+      <a class="nav-item">
+        <i class="bi bi-receipt"></i>
+        <span>Gastos</span>
+      </a>
+      <a class="nav-item">
+        <i class="bi bi-graph-up-arrow"></i>
+        <span>Ingresos</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Overlay móvil -->
+  <div class="sidebar-overlay" *ngIf="sidebarOpen" (click)="toggleSidebar()"></div>
+
+  <!-- Contenido principal -->
+  <main class="dashboard-content">
+
+    <!-- Header morado -->
+    <header class="dashboard-topbar">
+      <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <div class="topbar-info">
+        <h1 class="page-title">GESTOR DE GASTOS AURION</h1>
+        <p class="page-date">{{ currentDate }} — {{ currentTime }}</p>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="user-chip" (click)="openLogoutModal()">
+          <div class="user-avatar-sm">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div class="user-info-sm">
+            <span class="user-name-sm">Administrador Aurion</span>
+            <span class="user-role-sm">ADMIN</span>
+          </div>
+          <div class="logout-btn">
+            <i class="bi bi-box-arrow-right"></i>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Área scrollable -->
+    <div class="dashboard-scroll">
+
+      <!-- Tarjetas de estadísticas -->
+<section class="stats-section">
+  <div class="stat-card" *ngFor="let stat of stats; let i = index">
+    <div class="stat-title">{{ stat.title }}</div>
+    <div class="stat-icon-wrapper">
+      <i class="bi" [class]="stat.icon"></i>
+    </div>
+    <div class="stat-value">{{ stat.value }}</div>
+  </div>
+</section>
+
+      <!-- Gráfico de barras -->
+      <section class="chart-section">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Gastos durante el año</h3>
+            <div class="chart-legend">
+              <span class="legend-item">
+                <span class="legend-dot" style="background: #3b82f6;"></span>
+                <span>Dinero</span>
+              </span>
+              <span class="legend-item">
+                <span class="legend-dot" style="background: #a78bfa;"></span>
+                <span>Dinero</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="bar-chart-wrapper">
+            <!-- Eje Y -->
+            <div class="y-axis">
+              <span>4.000</span>
+              <span>3.000</span>
+              <span>2.000</span>
+              <span>1.000</span>
+              <span>0</span>
+            </div>
+
+            <!-- Área del gráfico -->
+            <div class="chart-plot">
+              <!-- Líneas de cuadrícula -->
+              <div class="grid-lines">
+                <div class="grid-line"></div>
+                <div class="grid-line"></div>
+                <div class="grid-line"></div>
+                <div class="grid-line"></div>
+                <div class="grid-line"></div>
+              </div>
+
+              <!-- Barras -->
+              <div class="bars-container">
+                <div class="bar-group" *ngFor="let group of barData">
+                  <div class="bar-pair">
+                    <div class="bar bar-blue" [style.height.%]="(group.blue / 4000) * 100"></div>
+                    <div class="bar bar-purple" [style.height.%]="(group.purple / 4000) * 100"></div>
+                  </div>
+                  <span class="bar-label">{{ group.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL DE CONFIRMACIÓN DE CIERRE DE SESIÓN
+     ═══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showLogoutModal()" (click)="onBackdropClick($event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Cerrar sesión</h3>
+      <button class="modal-close" (click)="closeLogoutModal()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-message">¿Estás seguro de que deseas cerrar sesión? Tu sesión actual se cerrará inmediatamente.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" (click)="closeLogoutModal()">Cancelar</button>
+      <button class="btn-modal-confirm" (click)="confirmLogout()">Sí, cerrar sesión</button>
+    </div>
+  </div>
+</div>
