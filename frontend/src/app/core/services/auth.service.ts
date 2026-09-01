@@ -23,10 +23,18 @@ export class AuthService {
   currentUser = signal<User | null>(this.getUserFromStorage());
 
   constructor() {
+    // Escuchar expiración por JWT
     this.sessionService.sessionExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.logoutDueToExpiration();
+      });
+
+    // Escuchar expiración por inactividad (pestaña oculta)
+    this.sessionService.inactivityExpired$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.logoutDueToInactivity();
       });
   }
 
@@ -47,20 +55,13 @@ export class AuthService {
     return this.http.get<{ success: boolean; user: User }>(`${this.apiUrl}/me`);
   }
 
-  /**
-   * Logout explícito iniciado por el usuario.
-   * Limpia datos y redirige al login.
-   */
   logout(): void {
     this.sessionService.clearExpirationTimer();
     this.clearAuthData();
     this.router.navigate(['/login']);
   }
 
-  /**
-   * Logout automático por expiración de sesión.
-   * Separamos la lógica para poder añadir métricas o logging diferenciado.
-   */
+  /** Logout por expiración del JWT */
   private logoutDueToExpiration(): void {
     this.clearAuthData();
     this.router.navigate(['/login'], {
@@ -69,10 +70,16 @@ export class AuthService {
     });
   }
 
-  /**
-   * Limpia TODOS los datos de autenticación del cliente.
-   * Única fuente de verdad para el cleanup — evita inconsistencias.
-   */
+  /** Logout por inactividad (pestaña oculta demasiado tiempo) */
+  private logoutDueToInactivity(): void {
+    this.clearAuthData();
+    this.router.navigate(['/login'], {
+      queryParams: { inactivityExpired: 'true' },
+      replaceUrl: true,
+    });
+  }
+
+  /** Limpia TODOS los datos de autenticación del cliente */
   clearAuthData(): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('token');
@@ -103,7 +110,6 @@ export class AuthService {
       try {
         return JSON.parse(userStr) as User;
       } catch {
-        // Si el JSON está corrupto, limpiamos para evitar errores persistentes
         this.clearAuthData();
         return null;
       }

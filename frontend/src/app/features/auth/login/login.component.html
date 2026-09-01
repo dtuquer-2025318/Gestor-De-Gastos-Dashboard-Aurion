@@ -15,7 +15,7 @@
           <img src="logo.svg" alt="AURION" class="logo-img" />
         </div>
         <h2 class="auth-title">Bienvenido de vuelta</h2>
-        <p class="auth-subtitle">Inicia sesión para continuar</p>
+        <p class="auth-subtitle">Usar su cuenta de Aurion</p>
       </div>
 
       <div class="auth-body">
@@ -30,6 +30,11 @@
           <span>{{ sessionExpiredMessage }}</span>
         </div>
 
+                <div *ngIf="inactivityExpiredMessage" class="alert-aurion alert-aurion-warning mb-4" role="alert">
+          <i class="bi bi-clock-history fs-5"></i>
+          <span>{{ inactivityExpiredMessage }}</span>
+        </div>
+        
         <div *ngIf="errorMessage" class="alert-aurion alert-aurion-error mb-4 animate-shake" role="alert">
           <i class="bi bi-exclamation-circle-fill fs-5"></i>
           <span>{{ errorMessage }}</span>
@@ -85,12 +90,12 @@
 
         <div class="auth-footer">
           <p class="auth-footer-text">
-            ¿Aún no tienes cuenta?
+            ¿No tiene una cuenta?
             <button
               type="button"
               class="btn-link-auth"
               (click)="goToRegister()">
-              Regístrate ahora
+              Cree una.
             </button>
           </p>
         </div>
