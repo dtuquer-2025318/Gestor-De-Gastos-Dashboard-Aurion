@@ -99,6 +99,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Devuelve el nombre legible del rol según el enum del backend.
+   * ADMIN → 'Admin' | USER → 'Usuario'
+   */
+  get userRoleLabel(): string {
+    const role = this.currentUser()?.role;
+    return role === 'ADMIN' ? 'Admin' : 'Usuario';
+  }
+
   /* ─── Modal de logout ─── */
   openLogoutModal(): void {
     this.showLogoutModal.set(true);
