@@ -64,13 +64,13 @@
       </div>
 
       <div class="topbar-actions">
-        <div class="user-chip" (click)="openLogoutModal()">
+                <div class="user-chip" (click)="openLogoutModal()">
           <div class="user-avatar-sm">
             <i class="bi bi-person-fill"></i>
           </div>
           <div class="user-info-sm">
-            <span class="user-name-sm">Administrador Aurion</span>
-            <span class="user-role-sm">ADMIN</span>
+            <span class="user-name-sm">{{ currentUser()?.name || 'Usuario' }}</span>
+            <span class="user-role-sm">{{ userRoleLabel }}</span>
           </div>
           <div class="logout-btn">
             <i class="bi bi-box-arrow-right"></i>
@@ -84,10 +84,10 @@
 
       <!-- Tarjetas de estadísticas -->
 <section class="stats-section">
-  <div class="stat-card" *ngFor="let stat of stats; let i = index">
+  <div class="stat-card" *ngFor="let stat of stats">
     <div class="stat-title">{{ stat.title }}</div>
     <div class="stat-icon-wrapper">
-      <i class="bi" [class]="stat.icon"></i>
+      <img [src]="stat.icon" [alt]="stat.title" class="stat-icon-img" />
     </div>
     <div class="stat-value">{{ stat.value }}</div>
   </div>
@@ -151,9 +151,6 @@
   </main>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MODAL DE CONFIRMACIÓN DE CIERRE DE SESIÓN
-     ═══════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showLogoutModal()" (click)="onBackdropClick($event)">
   <div class="modal-content">
     <div class="modal-header">
