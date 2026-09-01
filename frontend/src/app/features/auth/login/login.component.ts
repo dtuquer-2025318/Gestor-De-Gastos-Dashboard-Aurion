@@ -36,10 +36,10 @@ export class LoginComponent implements OnInit {
         this.successMessage = 'Registro exitoso. Por favor inicia sesión con tus credenciales.';
       }
       if (params['sessionExpired'] === 'true') {
-        this.sessionExpiredMessage = 'La sesión ha expirado por inactividad. Por favor inicia sesión nuevamente.';
+        this.sessionExpiredMessage = 'La sesión ha expirado por inactividad. Por favor inicie sesión nuevamente.';
       }
       if (params['inactivityExpired'] === 'true') {
-        this.inactivityExpiredMessage = 'Tu sesión se cerró por inactividad. Por favor inicia sesión nuevamente.';
+        this.inactivityExpiredMessage = 'Tu sesión se cerró por inactividad. Por favor inicie sesión nuevamente.';
       }
     });
   }
