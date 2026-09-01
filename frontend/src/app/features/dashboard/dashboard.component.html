@@ -84,10 +84,10 @@
 
       <!-- Tarjetas de estadísticas -->
 <section class="stats-section">
-  <div class="stat-card" *ngFor="let stat of stats; let i = index">
+  <div class="stat-card" *ngFor="let stat of stats">
     <div class="stat-title">{{ stat.title }}</div>
     <div class="stat-icon-wrapper">
-      <i class="bi" [class]="stat.icon"></i>
+      <img [src]="stat.icon" [alt]="stat.title" class="stat-icon-img" />
     </div>
     <div class="stat-value">{{ stat.value }}</div>
   </div>
