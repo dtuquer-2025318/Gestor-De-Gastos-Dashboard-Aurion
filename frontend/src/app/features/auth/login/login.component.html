@@ -30,6 +30,11 @@
           <span>{{ sessionExpiredMessage }}</span>
         </div>
 
+                <div *ngIf="inactivityExpiredMessage" class="alert-aurion alert-aurion-warning mb-4" role="alert">
+          <i class="bi bi-clock-history fs-5"></i>
+          <span>{{ inactivityExpiredMessage }}</span>
+        </div>
+        
         <div *ngIf="errorMessage" class="alert-aurion alert-aurion-error mb-4 animate-shake" role="alert">
           <i class="bi bi-exclamation-circle-fill fs-5"></i>
           <span>{{ errorMessage }}</span>
