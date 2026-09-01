@@ -77,10 +77,9 @@
                 [class.is-invalid]="f['password'].touched && f['password'].invalid"
               />
             </div>
-            <div *ngIf="f['password'].touched && f['password'].invalid" class="validation-error">
-              <span *ngIf="f['password'].errors?.['required']">La contraseña es obligatoria.</span>
-              <span *ngIf="f['password'].errors?.['minlength']">La contraseña debe tener al menos 6 caracteres.</span>
-              <span *ngIf="f['password'].errors?.['maxlength']">La contraseña no puede exceder 128 caracteres.</span>
+            <!-- UN SOLO mensaje de error, controlado por prioridad -->
+            <div *ngIf="passwordErrorMessage" class="validation-error">
+              <span>{{ passwordErrorMessage }}</span>
             </div>
           </div>
 
