@@ -61,9 +61,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /* ─── Tarjetas de estadísticas ─── */
   stats: StatCard[] = [
-    { title: 'SALDO TOTAL',     value: 'Q. 12,000', icon: 'bi-cash-stack' },
-    { title: 'GASTOS TOTALES',  value: 'Q. 14,357', icon: 'bi-file-earmark-text-fill' },
-    { title: 'AHORROS TOTALES', value: 'Q. 1,000',  icon: 'bi-piggy-bank-fill' }
+    { title: 'SALDO TOTAL',     value: 'Q. 12,000', icon: '/icons/saldo.png' },
+    { title: 'GASTOS TOTALES',  value: 'Q. 14,357', icon: '/icons/gastos.png' },
+    { title: 'AHORROS TOTALES', value: 'Q. 1,000',  icon: '/icons/ahorros.png' }
   ];
 
   /* ─── Datos del gráfico de barras ─── */
