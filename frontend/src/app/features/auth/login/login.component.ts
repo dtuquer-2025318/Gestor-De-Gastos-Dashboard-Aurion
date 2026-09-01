@@ -22,6 +22,7 @@ export class LoginComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
   sessionExpiredMessage = '';
+  inactivityExpiredMessage = '';
   loading = false;
 
   ngOnInit(): void {
@@ -36,6 +37,9 @@ export class LoginComponent implements OnInit {
       }
       if (params['sessionExpired'] === 'true') {
         this.sessionExpiredMessage = 'La sesión ha expirado por inactividad. Por favor inicia sesión nuevamente.';
+      }
+      if (params['inactivityExpired'] === 'true') {
+        this.inactivityExpiredMessage = 'Tu sesión se cerró por inactividad. Por favor inicia sesión nuevamente.';
       }
     });
   }
@@ -55,6 +59,7 @@ export class LoginComponent implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
     this.sessionExpiredMessage = '';
+    this.inactivityExpiredMessage = '';
 
     this.loginForm.disable();
 
@@ -68,8 +73,6 @@ export class LoginComponent implements OnInit {
         this.loading = false;
         this.loginForm.enable();
         
-        // Mapeo controlado de errores HTTP conocidos
-        // Nunca mostramos err.message crudo para evitar filtrar detalles internos
         if (err.status === 401) {
           this.errorMessage = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
         } else if (err.status === 429) {
