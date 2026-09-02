@@ -17,6 +17,18 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
     canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/dashboard/inicio/inicio.component').then((m) => m.InicioComponent),
+      },
+      {
+        path: 'ingresos',
+        loadComponent: () =>
+          import('./features/dashboard/income/income.component').then((m) => m.IngresosComponent),
+      },
+    ],
   },
   { path: '', redirectTo: 'login', pathMatch: 'full' },
   { path: '**', redirectTo: 'login' },

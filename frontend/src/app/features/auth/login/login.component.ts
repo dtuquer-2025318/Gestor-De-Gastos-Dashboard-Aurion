@@ -23,6 +23,7 @@ export class LoginComponent implements OnInit {
   successMessage = '';
   sessionExpiredMessage = '';
   inactivityExpiredMessage = '';
+  idleExpiredMessage = ''; // <-- NUEVO
   loading = false;
 
   ngOnInit(): void {
@@ -33,13 +34,16 @@ export class LoginComponent implements OnInit {
 
     this.route.queryParams.subscribe((params) => {
       if (params['registered'] === 'true') {
-        this.successMessage = 'Registro exitoso. Por favor inicia sesión con tus credenciales.';
+        this.successMessage = 'Registro exitoso. Por favor inicie sesión con sus credenciales.';
       }
       if (params['sessionExpired'] === 'true') {
-        this.sessionExpiredMessage = 'La sesión ha expirado por inactividad. Por favor inicie sesión nuevamente.';
+        this.sessionExpiredMessage = 'La sesión ha expirado. Por favor inicie sesión nuevamente.';
       }
       if (params['inactivityExpired'] === 'true') {
-        this.inactivityExpiredMessage = 'Tu sesión se cerró por inactividad. Por favor inicie sesión nuevamente.';
+        this.inactivityExpiredMessage = 'Su sesión se cerró por inactividad. Por favor inicie sesión nuevamente.';
+      }
+      if (params['idleExpired'] === 'true') { // <-- NUEVO
+        this.idleExpiredMessage = 'Su sesión se cerró por inactividad. No se detectó interacción durante un tiempo prolongado.';
       }
     });
   }
@@ -60,6 +64,7 @@ export class LoginComponent implements OnInit {
     this.successMessage = '';
     this.sessionExpiredMessage = '';
     this.inactivityExpiredMessage = '';
+    this.idleExpiredMessage = ''; // <-- NUEVO: limpiar al intentar login
 
     this.loginForm.disable();
 
@@ -74,13 +79,13 @@ export class LoginComponent implements OnInit {
         this.loginForm.enable();
         
         if (err.status === 401) {
-          this.errorMessage = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+          this.errorMessage = 'Credenciales incorrectas. Verifique su correo electrónico y contraseña.';
         } else if (err.status === 429) {
-          this.errorMessage = 'Demasiados intentos. Por favor espera unos minutos.';
+          this.errorMessage = 'Demasiados intentos. Por favor espere unos minutos.';
         } else if (err.status === 0) {
-          this.errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+          this.errorMessage = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
         } else {
-          this.errorMessage = err.error?.message || 'Ocurrió un error inesperado. Intenta más tarde.';
+          this.errorMessage = err.error?.message || 'Ocurrió un error inesperado. Intente más tarde.';
         }
       }
     });
