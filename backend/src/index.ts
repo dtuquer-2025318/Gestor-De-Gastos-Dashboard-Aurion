@@ -2,18 +2,16 @@ import express, { Response } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import authRoutes from './modules/auth/auth.routes';
-import { authMiddleware, AuthenticatedRequest } from './middleware/auth.middleware';
+import ingresosRoutes from './modules/income/income.routes';
 import { errorMiddleware } from './middleware/error.middleware';
 import { helmetConfig, authRateLimiter } from './config/security';
 
 const app = express();
 
-// ── Middlewares de seguridad globales ──
 app.use(helmetConfig);
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
-// ── Health Check ──
 app.get('/api/v1/health', (_req, res) => {
   res.status(200).json({
     success: true,
@@ -23,11 +21,11 @@ app.get('/api/v1/health', (_req, res) => {
   });
 });
 
-// ── Endpoints PÚBLICOS ──
-// Aplicar rate limiting solo a rutas de autenticación
 app.use('/api/v1/auth', authRateLimiter, authRoutes);
 
-// ── Handler 404 ──
+// ── ESTA LÍNEA SE MOVIÓ ARRIBA DEL 404 Y SE CORRIGIÓ EL PATH ──
+app.use('/api/v1/ingresos', ingresosRoutes);
+
 app.use((_req, res, _next) => {
   res.status(404).json({
     success: false,
@@ -36,10 +34,8 @@ app.use((_req, res, _next) => {
   });
 });
 
-// ── Middleware global de errores ──
 app.use(errorMiddleware);
 
-// ── Iniciar servidor ──
 app.listen(env.PORT, () => {
   console.log(`🚀 Servidor backend escuchando en: http://localhost:${env.PORT}`);
   console.log(`📡 Health check disponible en: http://localhost:${env.PORT}/api/v1/health`);
