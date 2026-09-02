@@ -1,42 +1,52 @@
-# 💰 Gestión de Gastos — AURION
+# AURION — Gestión de Gastos
 
-Proyecto full-stack profesional para el control y visualización de gastos personales y empresariales. Desarrollado con estándares de la industria: arquitectura limpia, autenticación segura con JWT, validación estricta de datos y un diseño moderno responsive bajo el sistema de diseño **AURION**.
+Sistema full-stack para control fiscal y visualización de ingresos/gastos, diseñado bajo el sistema AURION v2.0. Soporta deducciones fiscales de Guatemala (IVA 12%, ISR 5%, IGSS 4.83%) y control de acceso por roles.
 
-El sistema permite a los usuarios registrarse, iniciar sesión de forma segura, visualizar un dashboard con estadísticas y gráficos interactivos, y cuenta con protección automática de sesión por inactividad.
+> **Nota rápida:** Este proyecto usa `pnpm` exclusivamente. No uses `npm` ni `yarn` porque el lockfile y los scripts están calibrados para pnpm.
 
 ---
 
+## ¿Qué hace esto?
+
+Es una aplicación de gestión financiera con dos perfiles de usuario:
+
+- **Administrador:** Puede crear, editar y anular ingresos. Ve todos los KPIs en tiempo real.
+- **Usuario estándar:** Solo lectura. Puede consultar datos pero no modificarlos.
+
+El backend calcula automáticamente las deducciones fiscales según el tipo de ingreso (factura o planilla) y el frontend muestra todo en un dashboard con gráficos SVG nativos, sin librerías externas de charts.
+
+---
+
+## Arquitectura
+
+```
 ## 0. Estructura de software y de carpetas
 
 ```
 gestion-de-gastos/
 ├── backend/                          # API REST (Node + TypeScript + Express + Prisma)
 │   ├── prisma/
-│   │   ├── schema.prisma             # Modelo de datos (User, Role enum)
-│   │   └── seed.ts                   # Datos iniciales de prueba
+│   │   ├── migrations/               # Historial de migraciones SQL (init, add_ingreso_model)
+│   │   ├── schema.prisma             # Modelo de datos (User, Ingreso, Role, Categoria, Comprobante, Estado)
+│   │   └── seed.ts                   # Datos iniciales de prueba (Admin y registros base)
 │   ├── src/
 │   │   ├── config/
 │   │   │   ├── env.ts                # Validación estricta de variables de entorno
 │   │   │   ├── prisma.ts             # Cliente Prisma singleton
 │   │   │   └── security.ts           # Configuración de Helmet y Rate Limiting
 │   │   ├── middleware/
-│   │   │   ├── auth.middleware.ts    # Verificación JWT + tipado de request
+│   │   │   ├── auth.middleware.ts    # Verificación JWT + extracción de usuario
+│   │   │   ├── role.middleware.ts    # Middleware requireAdmin para protección de mutaciones HTTP
 │   │   │   └── error.middleware.ts   # Manejo centralizado de errores (AppError, Zod, Prisma, JWT)
 │   │   ├── modules/
-│   │   │   └── auth/
-│   │   │       ├── dto/
-│   │   │       │   ├── login.dto.ts      # Esquema Zod de login
-│   │   │       │   ├── register.dto.ts   # Esquema Zod de registro (complejidad de contraseña)
-│   │   │       │   └── index.ts          # Barrel export
-│   │   │       ├── auth.controller.ts    # Endpoints /login y /register
-│   │   │       ├── auth.routes.ts        # Router Express
-│   │   │       ├── auth.service.ts       # Lógica de negocio + generación JWT
-│   │   │       └── auth.types.ts         # Tipos específicos del módulo
-│   │   ├── utils/
-│   │   │   └── catch-async.ts        # Helper para capturar errores async en controllers
-│   │   └── index.ts                  # Punto de entrada: CORS, rutas, health check, 404, errores
-│   ├── .env.example                  # Plantilla de variables de entorno
-│   ├── .gitignore
+│   │   │   ├── auth/                 # Módulo de Autenticación (Login, Register, Perfil)
+│   │   │   └── income/               # Módulo de Ingresos y Cálculos Fiscales
+│   │   │       ├── dto/              # Esquemas Zod (crearIngresoDto, actualizarIngresoDto)
+│   │   │       ├── income.controller.ts # Endpoints REST de Ingresos y KPIs
+│   │   │       ├── income.routes.ts     # Definición de rutas protegidas por roles
+│   │   │       └── income.service.ts    # Lógica de negocio, deducciones fiscales y agregación de KPIs
+│   │   └── index.ts                  # Punto de entrada principal Express API
+│   ├── .env                          # Variables de entorno locales
 │   ├── package.json                  # Dependencias + scripts (pnpm)
 │   └── tsconfig.json                 # TypeScript strict mode
 │
@@ -44,273 +54,191 @@ gestion-de-gastos/
     ├── src/
     │   ├── app/
     │   │   ├── core/                         # Lógica global (singleton, infraestructura)
-    │   │   │   ├── guards/
-    │   │   │   │   └── auth.guard.ts         # Protege rutas verificando token vigente
-    │   │   │   ├── interceptors/
-    │   │   │   │   └── auth.interceptor.ts   # Adjunta JWT + maneja 401 → logout
-    │   │   │   ├── models/
-    │   │   │   │   └── auth.model.ts         # Interfaces: User, AuthResponse, DTOs
+    │   │   │   ├── guards/                   # Protecciones de rutas por JWT
+    │   │   │   ├── interceptors/             # Adjunta Bearer token + captura de 401/403
+    │   │   │   ├── models/                   # Interfaces TypeScript (auth.model.ts, income.model.ts)
     │   │   │   └── services/
-    │   │   │       ├── auth.service.ts       # Login, register, logout, Signals
-    │   │   │       └── session.service.ts    # Monitoreo de expiración JWT + inactividad por visibilidad
-    │   │   ├── features/                     # Módulos funcionales (pantallas)
+    │   │   │       ├── auth.service.ts       # Autenticación, Signals de usuario y perfil
+    │   │   │       ├── session.service.ts    # Control de inactividad y expiración
+    │   │   │       └── income.service.ts     # Peticiones HTTP de Ingresos y cálculo de KPIs
+    │   │   ├── features/                     # Módulos de pantalla
     │   │   │   ├── auth/
-    │   │   │   │   ├── login/
-    │   │   │   │   │   ├── login.component.ts
-    │   │   │   │   │   ├── login.component.html
-    │   │   │   │   │   └── login.component.css
-    │   │   │   │   └── register/
-    │   │   │   │       ├── register.component.ts
-    │   │   │   │       ├── register.component.html
-    │   │   │   │       └── register.component.css
+    │   │   │   │   ├── login/                # Componente de Login (Alertas estandarizadas en 3ª persona)
+    │   │   │   │   └── register/             # Componente de Registro de Usuarios
     │   │   │   └── dashboard/
-    │   │   │       ├── dashboard.component.ts    # Sidebar, gráficos SVG, stats, perfil dinámico
-    │   │   │       ├── dashboard.component.html
-    │   │   │       └── dashboard.component.css
-    │   │   ├── app.component.ts              # Root component (solo router-outlet)
-    │   │   ├── app.component.html
-    │   │   ├── app.config.ts                 # Zoneless + Router + HttpClient + Interceptor
-    │   │   └── app.routes.ts                 # Lazy loading: /login, /register, /dashboard
-    │   ├── environments/
-    │   │   ├── environment.ts            # Variables de desarrollo (URL API, timeout inactividad)
-    │   │   └── environment.prod.ts       # Variables de producción
-    │   ├── public/
-    │   │   └── favicon.svg
-    │   ├── index.html
-    │   ├── main.ts
-    │   ├── main.server.ts
-    │   └── styles.css                    # Sistema de diseño AURION v2.0 completo
+    │   │   │       ├── dashboard.component.ts# Layout principal, Topbar, Sidebar dinámico
+    │   │   │       ├── inicio/               # Vista resumida y estadísticas iniciales
+    │   │   │       └── income/               # Módulo CRUD de Ingresos (Modal, KPIs, Filtros, Soft Delete)
+    │   │   ├── app.routes.ts                 # Rutas lazy loading con Guards
+    │   │   └── app.config.ts                 # Configuración Zoneless + HttpClient
+    │   ├── environments/                     # Variables de entorno (development / production)
+    │   └── styles.css                        # Sistema de diseño AURION v2.0
     ├── angular.json
-    ├── package.json
-    ├── tsconfig.json
-    └── .gitignore
+    └── package.json```
+
 ```
 
-### Patrón arquitectónico
-
-- **Backend:** Arquitectura por módulos autocontenidos. Cada módulo (`auth`, y futuros módulos de gastos) tiene su propio `dto/`, `controller`, `service`, `routes` y `types`. Esto permite escalar horizontalmente sin tocar código existente. Separa claramente la capa de presentación (`controller`), la lógica de negocio (`service`) y la validación de datos (`dto`/Zod).
-- **Frontend:** Arquitectura por features. `core/` contiene servicios singleton de infraestructura (auth, sesión, interceptores, guards). `features/` contiene dominios de negocio aislados (auth, dashboard, gastos futuro). Nunca se importa de `features/` dentro de `core/`.
+El backend sigue una estructura por módulos autocontenidos. Cada módulo tiene su propia capa de validación (Zod), lógica de negocio (service) y presentación (controller). El frontend usa Angular standalone con change detection zoneless (sin zone.js), signals para estado reactivo y RxJS solo para HTTP.
 
 ---
 
-## 1. Stack tecnológico y versiones
+## Stack
 
 ### Backend
-
-| Tecnología | Versión | Propósito |
-|---|---|---|
-| Node.js | 22.23.1 | Runtime de JavaScript |
-| Express | ^4.21.0 | Framework web REST API |
-| TypeScript | ^5.6.2 | Tipado estático estricto |
-| Prisma ORM | ^5.20.0 | ORM para PostgreSQL con tipado automático |
-| PostgreSQL | 14+ | Base de datos relacional |
-| Zod | ^3.23.8 | Validación de esquemas en runtime |
-| JWT (jsonwebtoken) | ^9.0.2 | Autenticación con tokens firmados |
-| BCryptJS | ^2.4.3 | Hashing seguro de contraseñas |
-| Helmet | ^7.x | Headers de seguridad HTTP (XSS, clickjacking, MIME sniffing) |
-| Express Rate Limit | ^7.x | Protección contra ataques de fuerza bruta |
-| CORS | ^2.8.5 | Control de acceso entre dominios (frontend ↔ backend) |
-| dotenv | ^16.4.5 | Carga de variables de entorno desde `.env` |
+- **Node.js 22.23.1** + Express 4.21
+- **TypeScript 5.6** (strict mode)
+- **Prisma 5.20** + PostgreSQL 14+
+- **Zod** para validación de inputs
+- **JWT** (jsonwebtoken) + BCryptJS para auth
+- **Helmet** + **express-rate-limit** para headers de seguridad y protección contra fuerza bruta
 
 ### Frontend
+- **Angular 22** (standalone components, zoneless)
+- **TypeScript 6.0.2**
+- **RxJS 7.8** (solo para peticiones HTTP)
+- **Bootstrap 5.3.8** + Bootstrap Icons
+- **jwt-decode** para monitorear expiración de token en el cliente
 
-| Tecnología | Versión | Propósito |
-|---|---|---|
-| Angular | ^22.0.0 | Framework SPA con signals y change detection zoneless |
-| TypeScript | 6.0.2 | Tipado estático |
-| RxJS | ~7.8.0 | Programación reactiva para peticiones HTTP |
-| Bootstrap | ^5.3.8 | Grid system y utilidades CSS |
-| Bootstrap Icons | ^1.13.1 | Iconografía vectorial |
-| jwt-decode | ^4.0.0 | Decodificación de JWT en el cliente (monitoreo de expiración) |
-
-### Entorno de desarrollo
-
-| Herramienta | Versión | Uso |
-|---|---|---|
-| pnpm | 11.15.1 | Gestor de paquetes (único autorizado en el proyecto) |
-| Angular CLI | 22.0.8 | Generación de componentes, builds y servidor de desarrollo |
-| Nodemon | ^3.1.7 | Hot-reload del backend en desarrollo |
-| ts-node | ^10.9.2 | Ejecución directa de TypeScript sin compilar |
+### Dev
+- **pnpm 11.15.1** (gestor de paquetes obligatorio)
+- **Angular CLI 22.0.8**
+- **Nodemon** + **ts-node** para desarrollo backend
 
 ---
 
-## 2. Funcionalidades implementadas
+## Antes de empezar
 
-### 🔐 Autenticación y seguridad
-
-- **Registro de usuarios:** Validación de email único, contraseña con complejidad mínima (8 caracteres, mayúscula, minúscula, número, símbolo), y rechazo de contraseñas comunes conocidas (`123456`, `password`, `qwerty`, etc.).
-- **Login seguro:** Mensajes de error genéricos ("Credenciales incorrectas") para evitar enumeración de usuarios. Hashing de contraseñas con BCrypt a 12 salt rounds.
-- **JWT firmados:** Tokens con expiración configurable, firmados con secreto criptográfico de 256+ bits validado al arranque del servidor.
-- **Rate Limiting:** Máximo 5 intentos de login fallidos por IP cada 15 minutos.
-- **Headers de seguridad:** Helmet protege contra XSS, clickjacking y sniffing de MIME.
-- **CORS restringido:** Solo se permite el origen configurado en `FRONTEND_URL`.
-
-### 📊 Dashboard profesional
-
-- **Sidebar navegable:** Menú lateral con iconos y estados activos.
-- **Tarjetas de estadísticas:** Visualización de saldo total, gastos totales y ahorros totales.
-- **Gráfico de barras SVG:** Comparativa mensual con doble serie (barras azules y moradas), renderizado nativo sin librerías externas.
-- **Perfil dinámico:** El header muestra el nombre real del usuario autenticado y su rol (`Admin` o `Usuario`) leídos del Signal de autenticación.
-
-### 🕐 Gestión de sesión inteligente
-
-- **Expiración por JWT:** El frontend monitorea el tiempo de expiración del token y cierra sesión automáticamente cuando vence.
-- **Cierre por inactividad (Page Visibility API):** Si el usuario cambia de pestaña o minimiza el navegador, inicia un conteo configurable (por defecto 2 minutos). Si regresa antes, el conteo se cancela. Si no regresa, la sesión se cierra automáticamente.
-- **Mensajes diferenciados:** El login distingue entre "sesión expirada por JWT", "sesión cerrada por inactividad" y "credenciales inválidas".
-
-### ✅ Validaciones y buenas prácticas
-
-- **Zod en backend:** Todos los inputs de la API se validan antes de tocar la base de datos.
-- **Validación doble:** El frontend también valida en tiempo real para feedback inmediato al usuario.
-- **Manejo centralizado de errores:** Un único middleware captura errores de Zod, Prisma, JWT y errores internos, respondiendo siempre con mensajes controlados (sin exponer stack traces en producción).
-
----
-
-## 3. Requisitos previos
-
-Instala en tu computadora:
-
-1. **Node.js** 22.23.1 (o superior): https://nodejs.org
-2. **PostgreSQL** 14+ (o superior): https://www.postgresql.org/download/
-3. **pnpm** 11.15.1 (gestor de paquetes):
-   ```bash
-   npm install -g pnpm
-   ```
-4. Un editor de código (VS Code recomendado) y Git.
-
-Verifica las instalaciones:
+Necesitas esto instalado:
 
 ```bash
-node -v      # v22.23.1
+node -v      # v22.23.1 o superior
 pnpm -v      # 11.15.1
-psql --version
+psql --version  # PostgreSQL 14+
+```
+
+Si no tienes pnpm:
+```bash
+npm install -g pnpm
 ```
 
 ---
 
-## 4. Backend paso a paso
+## Backend
 
-### 4.1 Crear la base de datos en PostgreSQL
+### 1. Crear la base de datos
 
-Abre una terminal con `psql` (o usa pgAdmin) y ejecuta:
+```bash
+psql -U postgres
+```
 
 ```sql
 CREATE DATABASE aurion_db;
 ```
 
-### 4.2 Instalar dependencias
+### 2. Instalar dependencias
 
 ```bash
 cd backend
 pnpm install
 ```
 
-### 4.3 Instalar dependencias de seguridad
+Instala las dependencias de seguridad (no vienen en el package.json base por si prefieres configurarlas manualmente):
 
 ```bash
 pnpm add express-rate-limit helmet
 pnpm add -D @types/express-rate-limit
 ```
 
-### 4.4 Configurar variables de entorno
+### 3. Configurar variables de entorno
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` con tus credenciales. **Nunca subas este archivo a GitHub.**
+Edita `.env`:
 
 ```env
-# Puerto del servidor backend
 PORT=3000
-
-# Conexión a PostgreSQL
 DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/aurion_db?schema=public"
-
-# Clave secreta para firmar JWT (mínimo 64 caracteres hex generados criptográficamente)
-# Generar con: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-JWT_SECRET=""
-
-# Tiempo de expiración del token (ej: 15m, 1h, 24h)
+JWT_SECRET=""  # Genera esto con: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 JWT_EXPIRES_IN="1h"
-
-# Entorno: development | production | test
 NODE_ENV="development"
-
-# URL del frontend para CORS
 FRONTEND_URL="http://localhost:4200"
 ```
 
-### 4.5 Generar Prisma Client y ejecutar migraciones
+> **Importante:** El JWT_SECRET debe tener mínimo 64 caracteres hex. No lo inventes a mano, usa el comando de arriba. Y nunca subas `.env` a Git.
+
+### 4. Generar Prisma Client y migrar
 
 ```bash
 pnpm prisma generate
 pnpm prisma migrate dev --name init
 ```
 
-### 4.6 (Opcional) Insertar datos de ejemplo
+### 5. (Opcional) Cargar datos de prueba
 
 ```bash
 pnpm ts-node prisma/seed.ts
 ```
 
-### 4.7 Levantar el servidor en desarrollo
+Esto crea un usuario admin y algunos registros base para que no empieces con tablas vacías.
+
+### 6. Levantar servidor
 
 ```bash
 pnpm dev
 ```
 
-Deberías ver:
+Deberías ver algo como:
 
 ```
 🚀 Servidor backend escuchando en: http://localhost:3000
-🩺 Health check disponible en: http://localhost:3000/api/v1/health
+🩺 Health check: http://localhost:3000/api/v1/health
 🌐 CORS habilitado para: http://localhost:4200
 📝 Entorno: development
 ```
 
-### 4.8 Probar la API
+### 7. Probar la API rápidamente
 
 ```bash
 # Health check
 curl http://localhost:3000/api/v1/health
 
 # Registro
-curl -X POST http://localhost:3000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Juan Pérez","email":"juan@aurion.com","password":"Aurion2026!"}'
+curl -X POST http://localhost:3000/api/v1/auth/register   -H "Content-Type: application/json"   -d '{"name":"Juan Pérez","email":"juan@aurion.com","password":"Aurion2026!"}'
 
 # Login
-curl -X POST http://localhost:3000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"juan@aurion.com","password":"Aurion2026!"}'
+curl -X POST http://localhost:3000/api/v1/auth/login   -H "Content-Type: application/json"   -d '{"email":"juan@aurion.com","password":"Aurion2026!"}'
 ```
 
-> **Tip:** `pnpm prisma studio` abre una interfaz web para ver y editar las tablas visualmente.
+Si quieres explorar la base de datos visualmente:
+```bash
+pnpm prisma studio
+```
 
 ---
 
-## 5. Frontend paso a paso
+## Frontend
 
-### 5.1 Instalar Angular CLI globalmente (si no lo tienes)
+### 1. Instalar Angular CLI (si no lo tienes)
 
 ```bash
 pnpm add -g @angular/cli@22.1.4
 ```
 
-### 5.2 Instalar dependencias
+### 2. Instalar dependencias
 
 ```bash
 cd frontend
 pnpm install
 ```
 
-> **Nota:** Si `zone.js` aparece en las dependencias, elimínalo porque el proyecto usa `provideZonelessChangeDetection()`:
+> **Ojo:** Si `zone.js` aparece en las dependencias, elimínalo. Este proyecto usa `provideZonelessChangeDetection()` y zone.js solo te dará problemas:
 > ```bash
 > pnpm remove zone.js
 > ```
 
-### 5.3 Configurar variables de entorno
+### 3. Configurar entorno
 
 Edita `frontend/src/environments/environment.ts`:
 
@@ -318,12 +246,11 @@ Edita `frontend/src/environments/environment.ts`:
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api/v1',
-  /** Tiempo en minutos para cerrar sesión por inactividad (pestaña oculta) */
   inactivityTimeoutMinutes: 2,
 };
 ```
 
-Para producción, edita `frontend/src/environments/environment.prod.ts`:
+Para producción, edita `environment.prod.ts`:
 
 ```typescript
 export const environment = {
@@ -333,39 +260,139 @@ export const environment = {
 };
 ```
 
-### 5.4 Levantar el frontend en desarrollo
+### 4. Levantar en desarrollo
 
 ```bash
 pnpm start
 ```
 
-Se abrirá (o ve manualmente a) `http://localhost:4200`.
-
-### 5.5 Flujo de prueba recomendado
-
-1. Ve a **Registro** (`/register`) y crea una cuenta con una contraseña segura.
-2. Inicia sesión en **Login** (`/login`).
-3. Explora el **Dashboard**: observa el sidebar, las tarjetas de estadísticas y el gráfico de barras.
-4. Verifica que el header muestra tu nombre real y tu rol.
-5. Cambia de pestaña del navegador y espera 2 minutos: la sesión debería cerrarse automáticamente por inactividad.
-6. Vuelve a la pestaña: deberías ver el mensaje "Tu sesión se cerró por inactividad" en el login.
+Abre `http://localhost:4200`.
 
 ---
 
-## 6. Variables de entorno
+## Flujo de prueba recomendado
 
-### Backend (`.env`)
+1. Ve a `/register` y crea una cuenta. La contraseña necesita mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.
+2. Inicia sesión en `/login`.
+3. Explora el dashboard: fíjate en el sidebar, las tarjetas de KPIs y el gráfico de barras SVG.
+4. El header debe mostrar tu nombre real y tu rol (Admin o Usuario).
+5. Cambia de pestaña del navegador y espera 2 minutos. La sesión se cierra automáticamente por inactividad (usa la Page Visibility API + JWT expiration).
+6. Vuelve a la pestaña: deberías ver el mensaje de cierre por inactividad en el login.
 
-| Variable | Obligatoria | Descripción |
+---
+
+## Cálculos fiscales implementados
+
+### Facturas (Servicios, Productos, Consultoría, Otros)
+
+- **Base Imponible** = Monto Bruto / 1.12
+- **IVA (12%)** = Monto Bruto - Base Imponible
+- **ISR (5%)** = Base Imponible * 0.05
+- **Previsión Impuestos** = IVA + ISR
+
+### Planilla (Salarios)
+
+- **IGSS (4.83%)** = Monto Bruto * 0.0483
+- **Previsión Impuestos** = Q 0.00
+
+### Anulación lógica (Soft Delete)
+
+Cuando un admin anula un ingreso, el registro sigue visible en la lista con estilo tachado y badge "ANULADO", pero sus valores se descuentan automáticamente de los KPIs globales. Esto mantiene el historial contable intacto.
+
+---
+
+## Scripts disponibles
+
+### Backend
+
+| Script | Comando | Qué hace |
 |---|---|---|
-| `PORT` | Sí | Puerto donde escucha el servidor Express |
-| `DATABASE_URL` | Sí | URL de conexión a PostgreSQL |
-| `JWT_SECRET` | Sí | Clave secreta para firmar tokens (mínimo 32 chars, recomendado 64+) |
-| `JWT_EXPIRES_IN` | Sí | Tiempo de vida del token (ej: `1h`, `15m`) |
-| `NODE_ENV` | No | Entorno de ejecución (`development`, `production`, `test`) |
+| Dev | `pnpm dev` | Nodemon + ts-node con hot-reload |
+| Build | `pnpm build` | Compila TypeScript a `dist/` |
+| Start | `pnpm start` | Ejecuta el build compilado |
+| Prisma Generate | `pnpm prisma:generate` | Genera cliente Prisma tipado |
+| Prisma Migrate | `pnpm prisma:migrate` | Crea y aplica migraciones |
+| Prisma Studio | `pnpm prisma:studio` | UI visual de la base de datos |
+| Seed | `pnpm seed` | Ejecuta datos de prueba |
+
+### Frontend
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| Dev | `pnpm start` | Servidor Angular en `localhost:4200` |
+| Build | `pnpm build` | Build de producción optimizado |
+| Watch | `pnpm watch` | Build en modo observación |
+| Test | `pnpm test` | Suite de pruebas unitarias |
+
+---
+
+## Seguridad y buenas prácticas
+
+- **Validación doble:** Zod valida en el backend antes de tocar la base de datos. El frontend también valida en tiempo real para dar feedback inmediato.
+- **Hashing:** BCrypt con 12 salt rounds. Mensajes de error genéricos en login para evitar enumeración de usuarios.
+- **Rate Limiting:** Máximo 5 intentos de login fallidos por IP cada 15 minutos.
+- **Helmet:** Headers de seguridad HTTP activados por defecto (XSS, clickjacking, MIME sniffing).
+- **RBAC:** Middleware `requireAdmin` bloquea mutaciones HTTP (POST, PUT, DELETE) a usuarios estándar, devolviendo 403.
+- **Errores centralizados:** Un solo middleware captura errores de Zod, Prisma, JWT e internos. En producción nunca se expone el stack trace.
+- **Sesión inteligente:** El frontend monitorea la expiración del JWT con `jwt-decode` y usa la Page Visibility API para detectar inactividad al cambiar de pestaña.
+
+---
+
+## Convenciones del proyecto
+
+- **pnpm exclusivo.** No uses npm ni yarn.
+- **TypeScript strict mode** en backend y frontend.
+- **Archivos:** `kebab-case` (ej: `auth.service.ts`). **Clases:** `PascalCase` (ej: `AuthService`).
+- **Barrel exports:** Cada carpeta `dto/` tiene un `index.ts` para importaciones limpias.
+- **Sin `any`:** Usa tipos explícitos o `unknown` cuando sea necesario.
+- **Alertas:** Los mensajes de alerta se redactan en tercera persona y sin botón de cierre desalineado ("Su sesión se cerró por inactividad...", "Verifique sus credenciales...").
+
+---
+
+## Escalabilidad
+
+La arquitectura está pensada para agregar módulos sin tocar lo existente:
+
+1. **Nuevo módulo backend:** Crea carpeta en `src/modules/nuevo-modulo/` con su `dto/`, `controller.ts`, `service.ts`, `routes.ts`.
+2. **Nueva feature frontend:** Crea carpeta en `src/app/features/nueva-feature/` con componentes standalone.
+3. **Nuevo modelo Prisma:** Añade a `schema.prisma` y corre `pnpm prisma:migrate`.
+4. **Registro de rutas:** Importa en `src/index.ts` (backend) o `app.routes.ts` (frontend).
+
+---
+
+## Troubleshooting
+
+**Error: `Cannot find module '@prisma/client'`**
+> Corré `pnpm prisma generate`. El cliente tipado no se genera automáticamente al clonar.
+
+**Error de CORS en el frontend**
+> Verifica que `FRONTEND_URL` en el `.env` del backend coincida exactamente con la URL donde corre Angular (incluyendo el puerto).
+
+**La sesión se cierra inmediatamente al loguearme**
+> Revisa que el reloj de tu sistema esté sincronizado. JWT es sensible a diferencias de tiempo. También verifica que `JWT_EXPIRES_IN` no esté en un valor ridículamente bajo como `5s`.
+
+**El gráfico SVG no renderiza**
+> Asegúrate de que haya al menos un ingreso activo en la base de datos. El gráfico se alimenta de los datos reales, no de mock data.
+
+**Zone.js errors en consola**
+> Ejecuta `pnpm remove zone.js` y reinicia el servidor de desarrollo. Este proyecto no usa zone.js.
+
+---
+
+## Variables de entorno (referencia rápida)
+
+### Backend `.env`
+
+| Variable | Requerida | Descripción |
+|---|---|---|
+| `PORT` | Sí | Puerto del servidor Express |
+| `DATABASE_URL` | Sí | URL de conexión PostgreSQL |
+| `JWT_SECRET` | Sí | Clave para firmar tokens (mínimo 32 chars, recomendado 64+) |
+| `JWT_EXPIRES_IN` | Sí | Vida del token (ej: `1h`, `15m`) |
+| `NODE_ENV` | No | `development`, `production` o `test` |
 | `FRONTEND_URL` | No | Origen permitido por CORS (default: `http://localhost:4200`) |
 
-### Frontend (`environment.ts`)
+### Frontend `environment.ts`
 
 | Variable | Descripción |
 |---|---|
@@ -374,111 +401,4 @@ Se abrirá (o ve manualmente a) `http://localhost:4200`.
 
 ---
 
-## 7. Scripts disponibles
-
-### Backend (`backend/package.json`)
-
-| Script | Comando | Descripción |
-|---|---|---|
-| Desarrollo | `pnpm dev` | Nodemon + ts-node con hot-reload |
-| Build | `pnpm build` | Compila TypeScript a `dist/` |
-| Producción | `pnpm start` | Ejecuta el build compilado |
-| Prisma Generate | `pnpm prisma:generate` | Genera el cliente Prisma tipado |
-| Prisma Migrate | `pnpm prisma:migrate` | Crea y aplica migraciones de base de datos |
-| Prisma Studio | `pnpm prisma:studio` | UI visual para explorar la base de datos |
-| Seed | `pnpm seed` | Ejecuta el script de datos iniciales |
-
-### Frontend (`frontend/package.json`)
-
-| Script | Comando | Descripción |
-|---|---|---|
-| Desarrollo | `pnpm start` | Servidor de desarrollo Angular en `localhost:4200` |
-| Build | `pnpm build` | Build de producción optimizado |
-| Build watch | `pnpm watch` | Build en modo observación |
-| Tests | `pnpm test` | Ejecuta la suite de pruebas unitarias |
-
----
-
-## 8. Cómo funciona cada tema clave en este proyecto
-
-| Concepto | Dónde se aplica en el proyecto |
-|---|---|
-| Arquitectura limpia (Clean Architecture) | Backend organizado en módulos autocontenidos (`modules/auth/`) con separación controller/service/dto |
-| Validación de esquemas | Zod en `register.dto.ts` y `login.dto.ts` valida inputs antes de tocar la base de datos |
-| Hashing seguro | BCrypt con 12 salt rounds en `auth.service.ts` |
-| JWT | Firmado con `jsonwebtoken` en el backend; decodificado con `jwt-decode` en el frontend para monitoreo |
-| Rate Limiting | `express-rate-limit` protege los endpoints de autenticación contra fuerza bruta |
-| Headers de seguridad | `helmet` añade protecciones HTTP automáticas |
-| Reactive Forms | Login y registro usan `FormBuilder` + validadores síncronos y asíncronos |
-| Signals | `AuthService.currentUser` es un Signal reactivo que actualiza la UI automáticamente |
-| Zoneless Change Detection | `provideZonelessChangeDetection()` en `app.config.ts` elimina zone.js para mejor rendimiento |
-| Lazy Loading | Rutas cargadas por demanda en `app.routes.ts` |
-| Interceptors | `authInterceptor` adjunta el JWT a cada petición HTTP y maneja 401 |
-| Guards | `authGuard` protege rutas como `/dashboard` verificando validez del token |
-| Page Visibility API | `document.visibilitychange` detecta cuando el usuario abandona la pestaña para iniciar conteo de inactividad |
-| Sistema de diseño | Variables CSS personalizadas en `styles.css` (colores, espaciado, sombras, animaciones AURION) |
-
----
-
-## 9. Notas adicionales
-
-### Convenciones seguidas
-
-- **pnpm exclusivo:** Todo comando usa `pnpm`. No se usa `npm` ni `yarn` en ninguna parte del proyecto.
-- **TypeScript strict mode:** Activado en ambos proyectos (backend y frontend).
-- **Nomenclatura:** Archivos en `kebab-case` (ej: `auth.service.ts`), clases en `PascalCase` (ej: `AuthService`), interfaces en `PascalCase` con sufijo opcional (ej: `LoginDTO`).
-- **Barrel exports:** Cada carpeta `dto/` tiene un `index.ts` para importaciones limpias.
-- **Sin `any`:** Evitado en todo el proyecto; se usan tipos explícitos y `unknown` cuando es necesario.
-
-### Escalabilidad futura
-
-La arquitectura está preparada para añadir nuevos módulos sin refactorización:
-
-1. **Nuevo módulo backend:** Crear carpeta en `src/modules/nuevo-modulo/` con su `dto/`, `controller`, `service`, `routes` y `types`.
-2. **Nueva feature frontend:** Crear carpeta en `src/app/features/nueva-feature/` con componentes standalone.
-3. **Nuevo modelo Prisma:** Añadir al `schema.prisma` y ejecutar `pnpm prisma:migrate`.
-4. **Registro de rutas:** Importar las rutas del nuevo módulo en `src/index.ts` (backend) o `app.routes.ts` (frontend).
-
----
-
-## 10. Comandos rápidos (resumen)
-
-```bash
-# Instalar pnpm (una sola vez)
-npm install -g pnpm
-
-# ========== BACKEND ==========
-cd backend
-pnpm install
-pnpm add express-rate-limit helmet
-pnpm add -D @types/express-rate-limit
-cp .env.example .env
-# Editar .env con DATABASE_URL y JWT_SECRET generado
-# Generar JWT_SECRET:
-# node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-pnpm prisma generate
-pnpm prisma migrate dev --name init
-pnpm dev            # http://localhost:3000
-
-# ========== FRONTEND ==========
-cd ../frontend
-pnpm install
-# Eliminar zone.js si aún está:
-# pnpm remove zone.js
-# Editar src/environments/environment.ts con la URL del backend
-pnpm start           # http://localhost:4200
-```
-
----
-
-## 📁 ¿Dónde va este README?
-
-**Ubicación recomendada:** Raíz del repositorio (`/README.md`).
-
-**Justificación:** El README debe estar en la raíz porque es el primer archivo que GitHub (o cualquier cliente de Git) muestra al abrir el repositorio. Además, describe **ambas partes** del proyecto (backend + frontend) como un sistema único, lo cual es la forma estándar de documentar proyectos full-stack. Si estuviera dentro de `backend/` o `frontend/`, solo describiría una mitad y el visitante no entendería la arquitectura completa.
-
-Si deseas, puedes mantener una **copia resumida** en `backend/README.md` y `frontend/README.md` con solo los comandos específicos de cada carpeta, pero la documentación maestra debe vivir en la raíz.
-
----
-
-*Desarrollado con estándares profesionales — © 2026 AURION.*
+*Desarrollado con estándares profesionales — AURION 2026*
