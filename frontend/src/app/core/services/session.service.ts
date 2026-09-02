@@ -24,23 +24,44 @@ export class SessionService implements OnDestroy {
   /** Evento que se emite cuando la sesión se cierra por inactividad (pestaña oculta) */
   inactivityExpired$ = new Subject<void>();
 
+  /** Evento que se emite cuando la sesión se cierra por inactividad DENTRO de la misma pestaña */
+  idleExpired$ = new Subject<void>();
+
   /** ID del timer de expiración JWT */
   private expirationTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** ID del timer de inactividad (pestaña oculta) */
   private inactivityTimerId: ReturnType<typeof setTimeout> | null = null;
 
+  /** ID del timer de inactividad dentro de la pestaña (idle) */
+  private idleTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  /** Timer de debounce para eventos de actividad (evita 60fps de mousemove) */
+  private idleDebounceTimerId: ReturnType<typeof setTimeout> | null = null;
+
   /** Handler referenciado para poder remover el listener de visibilidad */
   private visibilityHandler = () => this.onVisibilityChange();
+
+  /** Handler referenciado para poder remover los listeners de actividad del usuario */
+  private userActivityHandler = () => this.onUserActivity();
 
   /** Signal que indica si la sesión está activa y vigente */
   isSessionActive = signal<boolean>(false);
 
-  /** Tiempo límite de inactividad en milisegundos (configurable vía environment) */
+  /** Tiempo límite de inactividad en milisegundos (configurable vía environment) — Mecanismo 2 */
   private readonly INACTIVITY_LIMIT_MS = (environment.inactivityTimeoutMinutes || 2) * 60 * 1000;
 
+  /** Tiempo límite de inactividad DENTRO de la pestaña en milisegundos — Mecanismo 3 */
+  private readonly IDLE_LIMIT_MS = (environment.inactivityInTabTimeoutMinutes || 10) * 60 * 1000;
+
+  /** Debounce para eventos de actividad en ms */
+  private readonly IDLE_DEBOUNCE_MS = 250;
+
+  /** Eventos del DOM que indican actividad del usuario */
+  private readonly IDLE_EVENTS = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+
   /**
-   * Inicia el monitoreo de expiración JWT y el listener de visibilidad de pestaña.
+   * Inicia el monitoreo de los tres mecanismos.
    * Se llama desde AuthService cada vez que el usuario inicia sesión.
    */
   startSessionMonitoring(): void {
@@ -69,12 +90,12 @@ export class SessionService implements OnDestroy {
 
       this.isSessionActive.set(true);
 
-      // Timer de expiración JWT (el que ya existía)
+      // ── Mecanismo 1: Timer de expiración JWT ──
       this.expirationTimerId = setTimeout(() => {
         this.handleSessionExpired();
       }, timeUntilExpiration);
 
-      // Registrar listener de visibilidad (evitar duplicados removiendo primero)
+      // ── Mecanismo 2: Registrar listener de visibilidad (pestaña oculta) ──
       this.stopVisibilityListener();
       document.addEventListener('visibilitychange', this.visibilityHandler);
 
@@ -82,6 +103,10 @@ export class SessionService implements OnDestroy {
       if (document.hidden) {
         this.startInactivityTimer();
       }
+
+      // ── Mecanismo 3: Iniciar detección de inactividad dentro de la pestaña ──
+      this.startIdleTimer();
+
     } catch {
       this.sessionExpired$.next();
     }
@@ -141,6 +166,7 @@ export class SessionService implements OnDestroy {
       this.expirationTimerId = null;
     }
     this.stopInactivityTimer();
+    this.stopIdleTimer();
     this.stopVisibilityListener();
     this.isSessionActive.set(false);
   }
@@ -162,6 +188,14 @@ export class SessionService implements OnDestroy {
   }
 
   /**
+   * Maneja la expiración por inactividad DENTRO de la misma pestaña.
+   */
+  private handleIdleExpired(): void {
+    this.clearExpirationTimer();
+    this.idleExpired$.next();
+  }
+
+  /**
    * Se ejecuta cada vez que cambia la visibilidad de la pestaña.
    * document.hidden === true  → usuario salió (minimizó, cambió tab, etc.)
    * document.hidden === false → usuario volvió
@@ -174,8 +208,7 @@ export class SessionService implements OnDestroy {
       // El usuario volvió a la pestaña → detener conteo de inactividad
       this.stopInactivityTimer();
 
-      // Si la sesión fue cerrada mientras estaba fuera (token ya no existe o expiró),
-      // notificar para redirigir al login con mensaje específico
+      // Si la sesión fue cerrada mientras estaba fuera, notificar
       if (!this.isTokenValid()) {
         this.inactivityExpired$.next();
       }
@@ -210,6 +243,68 @@ export class SessionService implements OnDestroy {
    */
   private stopVisibilityListener(): void {
     document.removeEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // MECANISMO 3: INACTIVIDAD DENTRO DE LA PESTAÑA (IDLE)
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Inicia el timer de inactividad dentro de la pestaña.
+   * Escucha eventos de usuario y reinicia el timer con debounce.
+   */
+  private startIdleTimer(): void {
+    this.stopIdleTimer(); // limpiar por si acaso
+    this.resetIdleTimer();
+
+    this.IDLE_EVENTS.forEach((eventName) => {
+      document.addEventListener(eventName, this.userActivityHandler, { passive: true });
+    });
+  }
+
+  /**
+   * Se ejecuta en cada evento de actividad del usuario.
+   * Usa debounce para no reiniciar el timer 60 veces por segundo con mousemove.
+   */
+  private onUserActivity(): void {
+    if (this.idleDebounceTimerId) {
+      clearTimeout(this.idleDebounceTimerId);
+    }
+
+    this.idleDebounceTimerId = setTimeout(() => {
+      this.resetIdleTimer();
+    }, this.IDLE_DEBOUNCE_MS);
+  }
+
+  /**
+   * Reinicia el timer de inactividad dentro de la pestaña.
+   * Se llama después del debounce de actividad.
+   */
+  private resetIdleTimer(): void {
+    if (this.idleTimerId) {
+      clearTimeout(this.idleTimerId);
+    }
+
+    this.idleTimerId = setTimeout(() => {
+      this.handleIdleExpired();
+    }, this.IDLE_LIMIT_MS);
+  }
+
+  /**
+   * Detiene el timer de inactividad dentro de la pestaña y remueve listeners.
+   */
+  private stopIdleTimer(): void {
+    if (this.idleTimerId) {
+      clearTimeout(this.idleTimerId);
+      this.idleTimerId = null;
+    }
+    if (this.idleDebounceTimerId) {
+      clearTimeout(this.idleDebounceTimerId);
+      this.idleDebounceTimerId = null;
+    }
+    this.IDLE_EVENTS.forEach((eventName) => {
+      document.removeEventListener(eventName, this.userActivityHandler);
+    });
   }
 
   /**
