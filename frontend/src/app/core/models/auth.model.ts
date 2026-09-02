@@ -1,15 +1,8 @@
 export interface User {
   id: string;
-  email: string;
   name: string;
-  role: 'USER' | 'ADMIN';
-}
-
-export interface AuthResponse {
-  success: boolean;
-  message: string;
-  user: User;
-  token: string;
+  email: string;
+  role: 'ADMIN' | 'USER';
 }
 
 export interface LoginDTO {
@@ -23,8 +16,13 @@ export interface RegisterDTO {
   password: string;
 }
 
+export interface AuthResponse {
+  success: boolean;
+  token: string;
+  user: User;
+}
+
 export interface RegisterResponse {
   success: boolean;
   message: string;
-  user: User;
 }

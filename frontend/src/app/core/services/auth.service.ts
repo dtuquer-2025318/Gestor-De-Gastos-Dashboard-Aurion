@@ -23,18 +23,25 @@ export class AuthService {
   currentUser = signal<User | null>(this.getUserFromStorage());
 
   constructor() {
-    // Escuchar expiración por JWT
+    // ── Mecanismo 1: expiración del JWT ──
     this.sessionService.sessionExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.logoutDueToExpiration();
       });
 
-    // Escuchar expiración por inactividad (pestaña oculta)
+    // ── Mecanismo 2: inactividad por cambio de pestaña ──
     this.sessionService.inactivityExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.logoutDueToInactivity();
+      });
+
+    // ── Mecanismo 3: inactividad DENTRO de la misma pestaña (NUEVO) ──
+    this.sessionService.idleExpired$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.logoutDueToIdle();
       });
   }
 
@@ -75,6 +82,15 @@ export class AuthService {
     this.clearAuthData();
     this.router.navigate(['/login'], {
       queryParams: { inactivityExpired: 'true' },
+      replaceUrl: true,
+    });
+  }
+
+  /** Logout por inactividad DENTRO de la misma pestaña (NUEVO) */
+  private logoutDueToIdle(): void {
+    this.clearAuthData();
+    this.router.navigate(['/login'], {
+      queryParams: { idleExpired: 'true' },
       replaceUrl: true,
     });
   }
