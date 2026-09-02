@@ -12,6 +12,25 @@ enum Role {
   ADMIN
 }
 
+enum TipoComprobante {
+  SALARIO
+  FACTURA
+}
+
+enum CategoriaIngreso {
+  SERVICIOS
+  PLANILLA
+  PRODUCTOS
+  CONSULTORIA
+  OTROS
+}
+
+enum EstadoIngreso {
+  PAGADO
+  PENDIENTE
+  ANULADO
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -20,9 +39,29 @@ model User {
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  // Campos de seguridad y auditoría
+
   lastLoginAt       DateTime?
   failedAttempts    Int      @default(0)
   lockedUntil       DateTime?
+
+  ingresos Ingreso[]
+}
+
+model Ingreso {
+  id              String           @id @default(uuid())
+  clienteOrigen   String
+  categoria       CategoriaIngreso
+  montoBruto      Decimal          @db.Decimal(12, 2)
+  fecha           DateTime
+  tipoComprobante TipoComprobante
+  estado          EstadoIngreso    @default(PAGADO)
+
+  igss        Decimal @db.Decimal(12, 2) @default(0)
+  ivaIsr      Decimal @db.Decimal(12, 2) @default(0)
+  ingresoNeto Decimal @db.Decimal(12, 2) @default(0)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
