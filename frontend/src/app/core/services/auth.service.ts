@@ -51,8 +51,6 @@ export class AuthService {
       // Cargar perfil en segundo plano sin destruir la sesión si hay error temporal
       this.getProfile().pipe(
         catchError(() => {
-          // Si el backend responde explícitamente 401, el authInterceptor se encargará de redirigir.
-          // Evitamos llamar a clearAuthData() prematuramente aquí para evitar expulsiones por fallos de red.
           return EMPTY;
         })
       ).subscribe({
