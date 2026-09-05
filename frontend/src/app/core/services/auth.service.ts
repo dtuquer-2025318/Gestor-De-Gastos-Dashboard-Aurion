@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, PLATFORM_ID, DestroyRef } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, catchError, EMPTY } from 'rxjs';
 import { AuthResponse, LoginDTO, RegisterDTO, User, RegisterResponse } from '../models/auth.model';
 import { Router } from '@angular/router';
 import { SessionService } from './session.service';
@@ -19,30 +19,46 @@ export class AuthService {
   private destroyRef = inject(DestroyRef);
   private readonly apiUrl = `${environment.apiUrl}/auth`;
 
-  /** Signal reactivo con el usuario autenticado actualmente */
-  currentUser = signal<User | null>(this.getUserFromStorage());
+  /** Signal reactivo con el usuario en memoria */
+  currentUser = signal<User | null>(null);
 
   constructor() {
-    // ── Mecanismo 1: expiración del JWT ──
+    // Suscripción a eventos de cierre de sesión por inactividad/expiración
     this.sessionService.sessionExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.logoutDueToExpiration();
-      });
+      .subscribe(() => this.logoutDueToExpiration());
 
-    // ── Mecanismo 2: inactividad por cambio de pestaña ──
     this.sessionService.inactivityExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.logoutDueToInactivity();
-      });
+      .subscribe(() => this.logoutDueToInactivity());
 
-    // ── Mecanismo 3: inactividad DENTRO de la misma pestaña (NUEVO) ──
     this.sessionService.idleExpired$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.logoutDueToIdle();
+      .subscribe(() => this.logoutDueToIdle());
+
+    // Inicializar sesión si existe token en el navegador al recargar
+    this.initSessionOnLoad();
+  }
+
+  private initSessionOnLoad(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const token = this.getToken();
+    if (token && this.sessionService.isTokenValid()) {
+      // Iniciar contadores de inactividad
+      this.sessionService.startSessionMonitoring();
+
+      // Cargar perfil en segundo plano sin destruir la sesión si hay error temporal
+      this.getProfile().pipe(
+        catchError(() => {
+          // Si el backend responde explícitamente 401, el authInterceptor se encargará de redirigir.
+          // Evitamos llamar a clearAuthData() prematuramente aquí para evitar expulsiones por fallos de red.
+          return EMPTY;
+        })
+      ).subscribe({
+        next: (res) => this.currentUser.set(res.user),
       });
+    }
   }
 
   login(credentials: LoginDTO): Observable<AuthResponse> {
@@ -68,7 +84,6 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  /** Logout por expiración del JWT */
   private logoutDueToExpiration(): void {
     this.clearAuthData();
     this.router.navigate(['/login'], {
@@ -77,7 +92,6 @@ export class AuthService {
     });
   }
 
-  /** Logout por inactividad (pestaña oculta demasiado tiempo) */
   private logoutDueToInactivity(): void {
     this.clearAuthData();
     this.router.navigate(['/login'], {
@@ -86,7 +100,6 @@ export class AuthService {
     });
   }
 
-  /** Logout por inactividad DENTRO de la misma pestaña (NUEVO) */
   private logoutDueToIdle(): void {
     this.clearAuthData();
     this.router.navigate(['/login'], {
@@ -95,7 +108,6 @@ export class AuthService {
     });
   }
 
-  /** Limpia TODOS los datos de autenticación del cliente */
   clearAuthData(): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('token');
@@ -114,22 +126,7 @@ export class AuthService {
   private handleSuccessAuth(res: AuthResponse): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem('token', res.token);
-      localStorage.setItem('user', JSON.stringify(res.user));
     }
     this.currentUser.set(res.user);
-  }
-
-  private getUserFromStorage(): User | null {
-    if (isPlatformBrowser(this.platformId)) {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) return null;
-      try {
-        return JSON.parse(userStr) as User;
-      } catch {
-        this.clearAuthData();
-        return null;
-      }
-    }
-    return null;
   }
 }
