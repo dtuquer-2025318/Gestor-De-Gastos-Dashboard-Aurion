@@ -1,34 +1,36 @@
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import { env } from './env';
 
 /**
- * Configuración de Helmet: headers de seguridad HTTP.
- * Protege contra XSS, clickjacking, sniffing de MIME, etc.
+ * Configuración de Helmet: headers de seguridad HTTP reforzados.
+ * Aplica OWASP Secure Headers y restricciones estrictas de CSP.
  */
 export const helmetConfig = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Necesario para estilos inline de Angular
+      styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: [],
     },
   },
-  crossOriginEmbedderPolicy: false, // Deshabilitado para compatibilidad con recursos externos
+  crossOriginEmbedderPolicy: false,
+  xFrameOptions: { action: 'deny' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 });
 
 /**
- * Rate limiter estricto para endpoints de autenticación.
- * Máximo 5 intentos por IP cada 15 minutos.
- * Esto mitiga ataques de fuerza bruta y diccionario.
+ * Limitador de tasa estricto para mitigar ataques de fuerza bruta.
  */
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // 5 intentos
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // No contar logins exitosos
+  skipSuccessfulRequests: true,
   message: {
     success: false,
     statusCode: 429,

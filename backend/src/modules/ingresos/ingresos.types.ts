@@ -5,7 +5,7 @@ export interface IngresoCreateInput {
   clienteOrigen: string;
   categoria: CategoriaIngreso;
   montoBruto: number;
-  fecha: string; // ISO 8601
+  fecha: string;
   tipoComprobante: TipoComprobante;
   estado?: EstadoIngreso;
 }

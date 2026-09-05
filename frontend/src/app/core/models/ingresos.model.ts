@@ -1,5 +1,5 @@
 export type TipoComprobante = 'SALARIO' | 'FACTURA';
-export type CategoriaIngreso = 'SERVICIOS' | 'PLANILLA' | 'PRODUCTOS' | 'CONSULTORIA' | 'OTROS';
+export type CategoriaIngreso = | 'SERVICIOS' | 'PLANILLA' | 'PRODUCTOS' | 'CONSULTORIA' | 'HONORARIOS'| 'VENTAS'| 'ALQUILERES'| 'INTERESES'| 'REIMBOLSOS'| 'OTROS';
 export type EstadoIngreso = 'PAGADO' | 'PENDIENTE' | 'ANULADO';
 
 export interface Ingreso {
@@ -7,7 +7,7 @@ export interface Ingreso {
   clienteOrigen: string;
   categoria: CategoriaIngreso;
   montoBruto: number;
-  fecha: string; // ISO 8601
+  fecha: string;
   tipoComprobante: TipoComprobante;
   estado: EstadoIngreso;
   igss: number;
@@ -16,6 +16,8 @@ export interface Ingreso {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  noComprobante?: string;
+  descripcion?: string;
 }
 
 export interface IngresoKPIs {
@@ -32,6 +34,8 @@ export interface CreateIngresoPayload {
   fecha: string;
   tipoComprobante: TipoComprobante;
   estado?: EstadoIngreso;
+  noComprobante?: string;
+  descripcion?: string;
 }
 
 export interface UpdateIngresoPayload {
@@ -41,4 +45,9 @@ export interface UpdateIngresoPayload {
   fecha?: string;
   tipoComprobante?: TipoComprobante;
   estado?: EstadoIngreso;
+  noComprobante?: string;
+  descripcion?: string;
 }
+
+// Alias para mantener compatibilidad si el service/component usa la nomenclatura DTO
+export type CreateIngresoDTO = CreateIngresoPayload;

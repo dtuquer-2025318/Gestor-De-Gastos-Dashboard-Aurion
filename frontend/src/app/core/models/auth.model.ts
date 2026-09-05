@@ -1,7 +1,14 @@
+export type GenderType = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+
 export interface User {
   id: string;
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  gender: GenderType;
+  birthDate: string;
+  phone: string;
   role: 'ADMIN' | 'USER';
 }
 
@@ -11,8 +18,13 @@ export interface LoginDTO {
 }
 
 export interface RegisterDTO {
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  gender: GenderType;
+  birthDate: string;
+  phone: string;
   password: string;
 }
 
