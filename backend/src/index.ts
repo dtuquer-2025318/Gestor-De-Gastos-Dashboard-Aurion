@@ -2,7 +2,7 @@ import express, { Response } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import authRoutes from './modules/auth/auth.routes';
-import ingresosRoutes from './modules/income/income.routes';
+import ingresosRoutes from './modules/ingresos/ingresos.routes';
 import { errorMiddleware } from './middleware/error.middleware';
 import { helmetConfig, authRateLimiter } from './config/security';
 
@@ -23,7 +23,6 @@ app.get('/api/v1/health', (_req, res) => {
 
 app.use('/api/v1/auth', authRateLimiter, authRoutes);
 
-// ── ESTA LÍNEA SE MOVIÓ ARRIBA DEL 404 Y SE CORRIGIÓ EL PATH ──
 app.use('/api/v1/ingresos', ingresosRoutes);
 
 app.use((_req, res, _next) => {
