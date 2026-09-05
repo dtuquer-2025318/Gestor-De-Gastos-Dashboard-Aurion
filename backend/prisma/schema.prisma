@@ -12,6 +12,13 @@ enum Role {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 enum TipoComprobante {
   SALARIO
   FACTURA
@@ -33,9 +40,14 @@ enum EstadoIngreso {
 
 model User {
   id        String   @id @default(uuid())
-  name      String
+  username  String   @unique
+  firstName String
+  lastName  String
   email     String   @unique
   password  String
+  gender    Gender
+  birthDate DateTime
+  phone     String
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
