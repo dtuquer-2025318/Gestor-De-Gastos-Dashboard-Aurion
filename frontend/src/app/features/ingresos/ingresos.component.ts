@@ -1,19 +1,19 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IngresoService } from '../../../core/services/income.service';
-import { AuthService } from '../../../core/services/auth.service';
-import { Ingreso, IngresoKPIs, CreateIngresoPayload, UpdateIngresoPayload, CategoriaIngreso, TipoComprobante, EstadoIngreso } from '../../../core/models/income.model';
+import { IngresosService } from '../../core/services/ingresos.service';
+import { AuthService } from '../../core/services/auth.service';
+import { Ingreso, IngresoKPIs, CreateIngresoPayload, UpdateIngresoPayload, CategoriaIngreso, TipoComprobante, EstadoIngreso } from '../../core/models/ingresos.model';
 
 @Component({
   selector: 'app-ingresos',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './income.component.html',
-  styleUrls: ['./income.component.css']
+  templateUrl: './ingresos.component.html',
+  styleUrls: ['./ingresos.component.css']
 })
 export class IngresosComponent implements OnInit {
-  private ingresoService = inject(IngresoService);
+  private ingresosService = inject(IngresosService);
   private authService = inject(AuthService);
 
   ingresos = signal<Ingreso[]>([]);
@@ -26,10 +26,8 @@ export class IngresosComponent implements OnInit {
 
   loading = signal(false);
   error = signal<string | null>(null);
-
   isAdmin = signal(false);
 
-  // Modal
   showModal = signal(false);
   isEditing = signal(false);
   editingId = signal<string | null>(null);
@@ -43,11 +41,10 @@ export class IngresosComponent implements OnInit {
     estado: 'PAGADO',
   });
 
-  // Confirmación de anulación
   showAnularConfirm = signal(false);
   anularId = signal<string | null>(null);
 
-  categorias: CategoriaIngreso[] = ['SERVICIOS', 'PLANILLA', 'PRODUCTOS', 'CONSULTORIA', 'OTROS'];
+  categorias: CategoriaIngreso[] = ['SERVICIOS','PLANILLA','PRODUCTOS','CONSULTORIA','HONORARIOS','VENTAS','ALQUILERES','INTERESES','REIMBOLSOS','OTROS'];
   comprobantes: TipoComprobante[] = ['FACTURA', 'SALARIO'];
   estados: EstadoIngreso[] = ['PAGADO', 'PENDIENTE'];
 
@@ -60,38 +57,38 @@ export class IngresosComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    this.ingresoService.listar().subscribe({
+    this.ingresosService.listar().subscribe({
       next: (res) => {
         this.ingresos.set(res.data);
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'Error al cargar ingresos');
+        this.error.set(err.error?.message || 'Error al cargar los ingresos.');
         this.loading.set(false);
       },
     });
 
-    this.ingresoService.obtenerKPIs().subscribe({
+    this.ingresosService.obtenerKPIs().subscribe({
       next: (res) => this.kpis.set(res.data),
-      error: () => { /* KPIs fallan silenciosamente o manejar error */ },
+      error: () => {},
     });
   }
 
   onCategoriaChange(nuevaCategoria: CategoriaIngreso): void {
-    let tipoComp: TipoComprobante = this.form().tipoComprobante;
+  let tipoComp: TipoComprobante = this.form().tipoComprobante;
 
-    if (nuevaCategoria === 'PLANILLA') {
-      tipoComp = 'SALARIO';
-    } else if (['SERVICIOS', 'PRODUCTOS', 'CONSULTORIA'].includes(nuevaCategoria)) {
-      tipoComp = 'FACTURA';
-    }
-
-    this.form.update(f => ({
-      ...f,
-      categoria: nuevaCategoria,
-      tipoComprobante: tipoComp
-    }));
+  if (nuevaCategoria === 'PLANILLA') {
+    tipoComp = 'SALARIO';
+  } else if (['SERVICIOS', 'PRODUCTOS', 'CONSULTORIA', 'HONORARIOS', 'VENTAS', 'ALQUILERES'].includes(nuevaCategoria)) {
+    tipoComp = 'FACTURA';
   }
+
+  this.form.update(f => ({
+    ...f,
+    categoria: nuevaCategoria,
+    tipoComprobante: tipoComp
+  }));
+}
 
   openCreate(): void {
     if (!this.isAdmin()) return;
@@ -136,18 +133,8 @@ export class IngresosComponent implements OnInit {
       return;
     }
 
-    if (payload.categoria === 'PLANILLA' && payload.tipoComprobante !== 'SALARIO') {
-      this.error.set('Los registros de PLANILLA deben ser obligatoriamente de tipo SALARIO.');
-      return;
-    }
-
-    if (['SERVICIOS', 'PRODUCTOS', 'CONSULTORIA'].includes(payload.categoria) && payload.tipoComprobante !== 'FACTURA') {
-      this.error.set('Los registros comerciales/servicios deben ser obligatoriamente de tipo FACTURA.');
-      return;
-    }
-
     if (this.isEditing() && this.editingId()) {
-      this.ingresoService.actualizar(this.editingId()!, payload as UpdateIngresoPayload).subscribe({
+      this.ingresosService.actualizar(this.editingId()!, payload as UpdateIngresoPayload).subscribe({
         next: () => {
           this.closeModal();
           this.cargarDatos();
@@ -155,7 +142,7 @@ export class IngresosComponent implements OnInit {
         error: (err) => this.error.set(err.error?.message || 'Error al actualizar'),
       });
     } else {
-      this.ingresoService.crear(payload).subscribe({
+      this.ingresosService.crear(payload).subscribe({
         next: () => {
           this.closeModal();
           this.cargarDatos();
@@ -178,7 +165,7 @@ export class IngresosComponent implements OnInit {
 
   doAnular(): void {
     if (!this.isAdmin() || !this.anularId()) return;
-    this.ingresoService.anular(this.anularId()!).subscribe({
+    this.ingresosService.anular(this.anularId()!).subscribe({
       next: () => {
         this.cancelAnular();
         this.cargarDatos();
@@ -191,12 +178,39 @@ export class IngresosComponent implements OnInit {
     return 'Q ' + value.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  estadoClass(estado: EstadoIngreso): string {
+  estadoClass(estado: EstadoIngreso | string): string {
     switch (estado) {
-      case 'PAGADO': return 'badge-pagado';
-      case 'PENDIENTE': return 'badge-pendiente';
-      case 'ANULADO': return 'badge-anulado';
-      default: return '';
+      case 'PAGADO':
+        return 'badge-pagado';
+      case 'PENDIENTE':
+        return 'badge-pendiente';
+      case 'ANULADO':
+        return 'badge-anulado';
+      default:
+        return '';
     }
+  }
+
+  get deduccionEstimadaModal(): number {
+    const monto = this.form().montoBruto || 0;
+    const tipo = this.form().tipoComprobante;
+
+    if (tipo === 'SALARIO') {
+      return Number((monto * 0.0483).toFixed(2));
+    } else if (tipo === 'FACTURA') {
+      return Number((monto * 0.15).toFixed(2));
+    }
+    return 0;
+  }
+
+  get labelDeduccionModal(): string {
+    return this.form().tipoComprobante === 'SALARIO'
+      ? 'Deducción IGSS Estimada (4.83%):'
+      : 'Deducción Fiscal Estimada (IVA/ISR):';
+  }
+
+  get netoEstimadoModal(): number {
+    const monto = this.form().montoBruto || 0;
+    return Number((monto - this.deduccionEstimadaModal).toFixed(2));
   }
 }

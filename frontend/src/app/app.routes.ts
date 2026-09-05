@@ -26,7 +26,7 @@ export const routes: Routes = [
       {
         path: 'ingresos',
         loadComponent: () =>
-          import('./features/dashboard/income/income.component').then((m) => m.IngresosComponent),
+          import('./features/ingresos/ingresos.component').then((m) => m.IngresosComponent),
       },
     ],
   },

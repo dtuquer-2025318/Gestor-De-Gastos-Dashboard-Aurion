@@ -23,7 +23,7 @@ export class LoginComponent implements OnInit {
   successMessage = '';
   sessionExpiredMessage = '';
   inactivityExpiredMessage = '';
-  idleExpiredMessage = ''; // <-- NUEVO
+  idleExpiredMessage = '';
   loading = false;
 
   ngOnInit(): void {
@@ -42,7 +42,7 @@ export class LoginComponent implements OnInit {
       if (params['inactivityExpired'] === 'true') {
         this.inactivityExpiredMessage = 'Su sesión se cerró por inactividad. Por favor inicie sesión nuevamente.';
       }
-      if (params['idleExpired'] === 'true') { // <-- NUEVO
+      if (params['idleExpired'] === 'true') {
         this.idleExpiredMessage = 'Su sesión se cerró por inactividad. No se detectó interacción durante un tiempo prolongado.';
       }
     });
@@ -64,18 +64,25 @@ export class LoginComponent implements OnInit {
     this.successMessage = '';
     this.sessionExpiredMessage = '';
     this.inactivityExpiredMessage = '';
-    this.idleExpiredMessage = ''; // <-- NUEVO: limpiar al intentar login
+    this.idleExpiredMessage = '';
 
+    const credentials = this.loginForm.getRawValue();
+
+    // Se deshabilita el formulario durante la petición
     this.loginForm.disable();
 
-    this.authService.login(this.loginForm.getRawValue()).subscribe({
+    this.authService.login(credentials).subscribe({
       next: () => {
         this.loading = false;
+        // Limpieza de datos sensibles en memoria antes de navegar
+        this.loginForm.get('password')?.setValue('');
         this.loginForm.enable();
         this.router.navigate(['/dashboard']);
       },
       error: (err: HttpErrorResponse) => {
         this.loading = false;
+        // Limpiar el campo de contraseña tras un intento fallido
+        this.loginForm.get('password')?.setValue('');
         this.loginForm.enable();
         
         if (err.status === 401) {

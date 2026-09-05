@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
-import * as ingresoService from './income.service';
-import { createIngresoSchema, updateIngresoSchema } from './dto';
+import * as ingresoService from './ingresos.service';
+import { createIngresoSchema, updateIngresoSchema } from './dto/ingresos.dto';
 import { catchAsync } from '../../utils/catch-async';
 
 export const listar = catchAsync(async (req: Request, res: Response) => {
@@ -12,24 +12,15 @@ export const listar = catchAsync(async (req: Request, res: Response) => {
 
 export const crear = catchAsync(async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
-  
-  // parse valida y tipa en una sola línea
   const parsed = createIngresoSchema.parse(req.body);
-  
   const ingreso = await ingresoService.crearIngreso(parsed, authReq.user.userId);
   res.status(201).json({ success: true, data: ingreso });
 });
 
 export const actualizar = catchAsync(async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
-  
   const parsed = updateIngresoSchema.parse(req.body);
-  
-  const ingreso = await ingresoService.actualizarIngreso(
-    req.params.id, 
-    parsed, 
-    authReq.user.userId
-  );
+  const ingreso = await ingresoService.actualizarIngreso(req.params.id, parsed, authReq.user.userId);
   res.json({ success: true, data: ingreso });
 });
 

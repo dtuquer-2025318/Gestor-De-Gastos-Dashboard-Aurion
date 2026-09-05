@@ -1,44 +1,56 @@
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { PrismaClient, Role, Gender } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Poblando la base de datos con usuarios de prueba...');
+  // Generar contraseñas encriptadas para los usuarios iniciales
+  const hashedAdminPassword = await bcrypt.hash('Admin#2026Secure', 12);
+  const hashedUserPassword = await bcrypt.hash('User#2026Secure', 12);
 
-  const hashedPassword = await bcrypt.hash('Password123!', 10);
-
-  // 1. Administrador
-  const admin = await (prisma as any).user.upsert({
+  // 1. Crear Usuario Administrador
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@aurion.com' },
     update: {},
     create: {
-      name: 'Administrador Aurion',
+      username: 'admin_aurion',
+      firstName: 'Administrador',
+      lastName: 'Sistema',
       email: 'admin@aurion.com',
-      password: hashedPassword,
-      role: 'ADMIN',
+      password: hashedAdminPassword,
+      gender: Gender.PREFER_NOT_TO_SAY,
+      birthDate: new Date('1990-01-01'),
+      phone: '12345678',
+      role: Role.ADMIN,
     },
   });
 
-  // 2. Usuario Común
-  const user = await (prisma as any).user.upsert({
-    where: { email: 'user@aurion.com' },
+  // 2. Crear Usuario Estándar
+  const user = await prisma.user.upsert({
+    where: { email: 'usuario@aurion.com' },
     update: {},
     create: {
-      name: 'Usuario Estándar',
-      email: 'user@aurion.com',
-      password: hashedPassword,
-      role: 'USER',
+      username: 'usuario_demo',
+      firstName: 'Carlos',
+      lastName: 'Mendoza',
+      email: 'usuario@aurion.com',
+      password: hashedUserPassword,
+      gender: Gender.MALE,
+      birthDate: new Date('2000-05-15'),
+      phone: '87654321',
+      role: Role.USER,
     },
   });
 
-  console.log('Usuarios creados exitosamente:');
-  console.log({ admin, user });
+  console.log('Seed completado con éxito:');
+  console.log('ADMIN creado:', admin.email);
+  console.log('USER creado:', user.email);
 }
 
 main()
   .catch((e) => {
-    console.error('Error al poblar la base de datos:', e);
+    console.error('Error durante la ejecución del seed:', e);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
